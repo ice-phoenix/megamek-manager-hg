@@ -1,0 +1,9 @@
+syntax: glob
+
+target/*
+
+*.conf
+
+*.iml
+*.ipr
+*.iws
