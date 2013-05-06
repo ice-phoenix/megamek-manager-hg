@@ -2,7 +2,6 @@ package info.icephoenix.mmm
 
 import akka.actor._
 import info.icephoenix.mmm.msgs._
-import info.icephoenix.mmm.sups.RunnerSupervisor
 import org.apache.log4j.BasicConfigurator
 
 object Main {
@@ -11,14 +10,9 @@ object Main {
 
     BasicConfigurator.configure()
 
-    val system = ActorSystem("megamek-manager")
+    val mmm = MegamekManager.create()
 
-    val runnerSup = system.actorOf(
-      Props[RunnerSupervisor],
-      name = "runner-sup"
-    )
-
-    runnerSup ! StartServer(2345, "")
+    mmm.RunnerSup ! StartServer(2345, "")
 
   }
 
