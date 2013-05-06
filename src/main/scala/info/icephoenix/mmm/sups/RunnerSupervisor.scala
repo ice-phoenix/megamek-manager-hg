@@ -28,7 +28,7 @@ class RunnerSupervisor
         case null => {
           logger.debug("Starting server on port {}", port.toString)
           val runner = context.actorOf(
-            Props(classOf[ServerRunner], port, password),
+            Props(new ServerRunner(port, password)),
             name = serverRunnerName(port)
           )
           runners.put(port, runner)
