@@ -23,7 +23,7 @@ class ServerRunner(port: Int, password: String = "")
 
   def receive = {
 
-    case StatisticsRequest => {
+    case ServerStatsRequest => {
 
       def playerToString(p: Player) = {
         val suffix = (p.isGhost, p.isObserver) match {
@@ -34,7 +34,7 @@ class ServerRunner(port: Int, password: String = "")
         p.getName + suffix
       }
 
-      sender ! StatisticsResponse(
+      sender ! ServerStatsResponse(
         port,
         Option(mms.getGame)
           .map { _.getPlayers.map { playerToString }.toList }
