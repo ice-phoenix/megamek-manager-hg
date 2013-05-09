@@ -7,26 +7,29 @@ import akka.util.Timeout
 import com.google.common.collect.HashBiMap
 import com.typesafe.scalalogging.slf4j.Logging
 import info.icephoenix.mmm.actors.ServerRunner
+import info.icephoenix.mmm.msgs.DataImplicits._
 import info.icephoenix.mmm.msgs._
+import scala.concurrent._
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Await}
 
 class RunnerSupervisor
   extends Actor
   with Logging {
 
-  import context.dispatcher
+  val runners = HashBiMap.create[Int, ActorRef]()
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 6, withinTimeRange = 1 minute) {
       case _: Exception => Stop
     }
 
+  import context.dispatcher
+
   implicit val timeout = Timeout(5 seconds)
 
   def serverRunnerName(port: Int) = { s"runner-$port" }
 
-  val runners = HashBiMap.create[Int, ActorRef]()
+  def serverRunnerPort(child: ActorRef) = runners.inverse().get(child)
 
   def receive = {
 
@@ -72,13 +75,14 @@ class RunnerSupervisor
 
     case AllServersStatsRequest => {
 
-      val fAllStats = Future.sequence {
-        context.children.map {
-          child => ask(child, ServerStatsRequest).mapTo[ServerStatsResponse]
+      val fAllStats = Future.traverse(context.children) {
+        child => ask(child, ServerStatsRequest).mapTo[ServerStatsResponse].map { ServerStatsResponse2ServerStatus } recover {
+          case t: TimeoutException => ServerTimedOut(serverRunnerPort(child))
+          case e: Exception => ServerFailed(serverRunnerPort(child), e.getMessage)
         }
       }
 
-      val allStats = Await.result(fAllStats, timeout.duration)
+      val allStats = Await.result(fAllStats, Duration.Inf).toSeq
 
       sender ! AllServersStatsResponse(allStats)
 
