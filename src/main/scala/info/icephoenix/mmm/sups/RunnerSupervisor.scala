@@ -51,7 +51,7 @@ class RunnerSupervisor
           runners.put(port, runner)
           context.watch(runner)
 
-          sender ! queryServerStatus(runner, port)
+          sender ! Await.result(queryServerStatus(runner, port), Duration.Inf)
 
         }
         case _ => {
@@ -89,7 +89,7 @@ class RunnerSupervisor
         case ref => {
           logger.debug("Querying server stats on port {}", port.toString)
 
-          sender ! queryServerStatus(ref, port)
+          sender ! Await.result(queryServerStatus(ref, port), Duration.Inf)
 
         }
       }
