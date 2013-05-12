@@ -7,8 +7,7 @@ import akka.util.Timeout
 import com.google.common.collect.HashBiMap
 import com.typesafe.scalalogging.slf4j.Logging
 import info.icephoenix.mmm.actors.ServerRunner
-import info.icephoenix.mmm.msgs.DataImplicits._
-import info.icephoenix.mmm.msgs._
+import info.icephoenix.mmm.data._
 import scala.concurrent._
 import scala.concurrent.duration._
 
@@ -27,9 +26,16 @@ class RunnerSupervisor
 
   implicit val timeout = Timeout(5 seconds)
 
-  def serverRunnerName(port: Int) = { s"runner-$port" }
+  def runnerName(port: Int) = { s"runner-$port" }
 
-  def serverRunnerPort(child: ActorRef) = runners.inverse().get(child)
+  def runnerPort(child: ActorRef) = runners.inverse().get(child)
+
+  def queryServerStatus(child: ActorRef, port: Int) = {
+    ask(child, ServerReport(port)).mapTo[ServerOnline] recover {
+      case t: TimeoutException => ServerTimedOut(port)
+      case e: Exception => ServerFailed(port, e.getMessage)
+    }
+  }
 
   def receive = {
 
@@ -37,18 +43,19 @@ class RunnerSupervisor
       runners.get(port) match {
         case null => {
           logger.debug("Starting server on port {}", port.toString)
+
           val runner = context.actorOf(
             Props(new ServerRunner(port, password)),
-            name = serverRunnerName(port)
+            name = runnerName(port)
           )
           runners.put(port, runner)
           context.watch(runner)
 
-          sender ! Success(s"Server on port $port started")
+          sender ! queryServerStatus(runner, port)
 
         }
         case _ => {
-          sender ! Failure(s"Server on port $port is already started")
+          sender ! FailWith.ServerAlreadyRunningOn(port)
         }
       }
     }
@@ -56,13 +63,14 @@ class RunnerSupervisor
     case StopServer(port) => {
       runners.get(port) match {
         case null => {
-          sender ! Failure(s"Server on port $port is already stopped")
+          sender ! FailWith.ServerNotRunningOn(port)
         }
         case ref => {
           logger.debug("Stopping server on port {}", port.toString)
+
           context.stop(ref)
 
-          sender ! Success(s"Server on port $port stopped")
+          sender ! ServerStopped(port)
 
         }
       }
@@ -73,19 +81,34 @@ class RunnerSupervisor
       runners.inverse().remove(child)
     }
 
-    case AllServersStatsRequest => {
+    case ServerReport(port) => {
+      runners.get(port) match {
+        case null => {
+          sender ! FailWith.ServerNotRunningOn(port)
+        }
+        case ref => {
+          logger.debug("Querying server stats on port {}", port.toString)
 
-      val fAllStats = Future.traverse(context.children) {
-        child => ask(child, ServerStatsRequest).mapTo[ServerStatsResponse].map { ServerStatsResponse2ServerStatus } recover {
-          case t: TimeoutException => ServerTimedOut(serverRunnerPort(child))
-          case e: Exception => ServerFailed(serverRunnerPort(child), e.getMessage)
+          sender ! queryServerStatus(ref, port)
+
         }
       }
+    }
 
+    case AllServerReport => {
+      logger.debug("Querying all server stats")
+
+      val fAllStats = Future.traverse(context.children) {
+        child => queryServerStatus(child, runnerPort(child))
+      }
       val allStats = Await.result(fAllStats, Duration.Inf).toSeq
 
-      sender ! AllServersStatsResponse(allStats)
+      sender ! AllServerStatus(allStats)
 
+    }
+
+    case msg: Message => {
+      logger.debug("Unknown msg: {}", msg)
     }
 
   }

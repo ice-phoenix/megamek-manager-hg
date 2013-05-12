@@ -2,7 +2,7 @@ package info.icephoenix.mmm.actors
 
 import akka.actor.Actor
 import com.typesafe.scalalogging.slf4j.Logging
-import info.icephoenix.mmm.msgs._
+import info.icephoenix.mmm.data._
 import megamek.common.Player
 import megamek.server.Server
 import scala.collection.JavaConversions._
@@ -23,7 +23,7 @@ class ServerRunner(port: Int, password: String = "")
 
   def receive = {
 
-    case ServerStatsRequest => {
+    case ServerReport(`port`) => {
 
       def playerToString(p: Player) = {
         val suffix = (p.isGhost, p.isObserver) match {
@@ -34,7 +34,7 @@ class ServerRunner(port: Int, password: String = "")
         p.getName + suffix
       }
 
-      sender ! ServerStatsResponse(
+      sender ! ServerOnline(
         port,
         Option(mms.getGame)
           .map { _.getPlayers.map { playerToString }.toList }
