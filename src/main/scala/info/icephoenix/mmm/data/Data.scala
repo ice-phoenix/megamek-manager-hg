@@ -1,13 +1,26 @@
 package info.icephoenix.mmm.data
 
+///////////////////////////////////////////////////////////////////////////////
+// Generic stuff
+///////////////////////////////////////////////////////////////////////////////
 sealed trait Message;
+
+sealed trait ServerMessage extends Message {
+  val port: Int
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Server status messages
 ///////////////////////////////////////////////////////////////////////////////
+// Requests
+///////////////////////////////////////////////////////////////////////////////
+case class ServerReport(port: Int) extends ServerMessage;
 
-case class ServerReport(port: Int) extends Message;
+case object AllServerReport extends Message;
 
+///////////////////////////////////////////////////////////////////////////////
+// Responses
+///////////////////////////////////////////////////////////////////////////////
 sealed trait ServerStatus extends Message;
 
 case class ServerOnline(port: Int, players: Seq[String]) extends ServerStatus;
@@ -18,15 +31,13 @@ case class ServerTimedOut(port: Int) extends ServerStatus;
 
 case class ServerFailed(port: Int, error: String) extends ServerStatus;
 
-
-case object AllServerReport extends Message;
-
 case class AllServerStatus(status: Seq[ServerStatus]) extends Message;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Server start/stop messages
+// Server control messages
 ///////////////////////////////////////////////////////////////////////////////
+case class StartServer(port: Int, password: String) extends ServerMessage;
 
-case class StartServer(port: Int, password: String) extends Message;
+case class StopServer(port: Int) extends ServerMessage;
 
-case class StopServer(port: Int) extends Message;
+case class ResetServer(port: Int) extends ServerMessage;

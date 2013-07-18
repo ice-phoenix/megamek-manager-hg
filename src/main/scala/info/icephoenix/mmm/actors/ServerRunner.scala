@@ -1,6 +1,6 @@
 package info.icephoenix.mmm.actors
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import com.typesafe.scalalogging.slf4j.Logging
 import info.icephoenix.mmm.data._
 import megamek.common.Player
@@ -21,25 +21,34 @@ class ServerRunner(port: Int, password: String = "")
     mms.die()
   }
 
+  def sendStatus(sender: ActorRef) {
+
+    def playerToString(p: Player) = {
+      val suffix = (p.isGhost, p.isObserver) match {
+        case (true, _) => "[ghost]"
+        case (_, true) => "[obs]"
+        case _ => ""
+      }
+      p.getName + suffix
+    }
+
+    sender ! ServerOnline(
+      port,
+      Option(mms.getGame)
+      .map { _.getPlayers.map { playerToString }.toList }
+      .getOrElse { List.empty[String] }
+    )
+  }
+
   def receive = {
 
     case ServerReport(`port`) => {
+      sendStatus(sender)
+    }
 
-      def playerToString(p: Player) = {
-        val suffix = (p.isGhost, p.isObserver) match {
-          case (true, _) => "[ghost]"
-          case (_, true) => "[obs]"
-          case _ => ""
-        }
-        p.getName + suffix
-      }
-
-      sender ! ServerOnline(
-        port,
-        Option(mms.getGame)
-          .map { _.getPlayers.map { playerToString }.toList }
-          .getOrElse(List.empty[String])
-      )
+    case ResetServer(`port`) => {
+      mms.resetGame()
+      sendStatus(sender)
     }
 
     case msg: Message => {

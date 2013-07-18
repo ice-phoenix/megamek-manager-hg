@@ -30,10 +30,10 @@ class RunnerSupervisor
 
   def runnerPort(child: ActorRef) = runners.inverse().get(child)
 
-  def queryServerStatus(child: ActorRef, port: Int) = {
-    ask(child, ServerReport(port)).mapTo[ServerOnline] recover {
-      case t: TimeoutException => ServerTimedOut(port)
-      case e: Exception => ServerFailed(port, e.getMessage)
+  def forwardMsg(child: ActorRef, msg: ServerMessage) = {
+    ask(child, msg).mapTo[ServerOnline] recover {
+      case t: TimeoutException => ServerTimedOut(msg.port)
+      case e: Exception => ServerFailed(msg.port, e.getMessage)
     }
   }
 
@@ -51,8 +51,7 @@ class RunnerSupervisor
           runners.put(port, runner)
           context.watch(runner)
 
-          sender ! Await.result(queryServerStatus(runner, port), Duration.Inf)
-
+          sender ! Await.result(forwardMsg(runner, ServerReport(port)), Duration.Inf)
         }
         case _ => {
           sender ! FailWith.ServerAlreadyRunningOn(port)
@@ -65,13 +64,10 @@ class RunnerSupervisor
         case null => {
           sender ! FailWith.ServerNotRunningOn(port)
         }
-        case ref => {
+        case runner => {
           logger.debug("Stopping server on port {}", port.toString)
-
-          context.stop(ref)
-
+          context.stop(runner)
           sender ! ServerStopped(port)
-
         }
       }
     }
@@ -81,16 +77,15 @@ class RunnerSupervisor
       runners.inverse().remove(child)
     }
 
-    case ServerReport(port) => {
+    case msg: ServerMessage => {
+      val port = msg.port
       runners.get(port) match {
         case null => {
           sender ! FailWith.ServerNotRunningOn(port)
         }
-        case ref => {
-          logger.debug("Querying server stats on port {}", port.toString)
-
-          sender ! Await.result(queryServerStatus(ref, port), Duration.Inf)
-
+        case runner => {
+          logger.debug("Forwarding msg '{}' to server on port {}", msg, port.toString)
+          sender ! Await.result(forwardMsg(runner, msg), Duration.Inf)
         }
       }
     }
@@ -99,12 +94,11 @@ class RunnerSupervisor
       logger.debug("Querying all server stats")
 
       val fAllStats = Future.traverse(context.children) {
-        child => queryServerStatus(child, runnerPort(child))
+        child => forwardMsg(child, ServerReport(runnerPort(child)))
       }
       val allStats = Await.result(fAllStats, Duration.Inf).toSeq
 
       sender ! AllServerStatus(allStats)
-
     }
 
     case msg: Message => {
