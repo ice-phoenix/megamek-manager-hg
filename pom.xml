@@ -7,7 +7,7 @@
     <groupId>info.ice-phoenix</groupId>
     <artifactId>megamek-manager</artifactId>
     <packaging>jar</packaging>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.2-SNAPSHOT</version>
     <name>MegaMek server manager</name>
 
     <dependencies>
