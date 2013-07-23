@@ -30,6 +30,8 @@
     <orderEntry type="library" name="Maven: org.scala-lang:scala-reflect:2.10.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.guava:guava:14.0.1" level="project" />
     <orderEntry type="library" name="Maven: com.google.code.findbugs:jsr305:2.0.1" level="project" />
+    <orderEntry type="library" name="Maven: joda-time:joda-time:2.2" level="project" />
+    <orderEntry type="library" name="Maven: org.joda:joda-convert:1.2" level="project" />
     <orderEntry type="library" name="Maven: megamek:megamek:0.34.10" level="project" />
     <orderEntry type="library" name="Maven: tinyxml:tinyxml:0.7" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe:scalalogging-slf4j_2.10:1.0.1" level="project" />

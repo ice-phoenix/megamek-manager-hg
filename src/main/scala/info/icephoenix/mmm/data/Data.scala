@@ -1,5 +1,7 @@
 package info.icephoenix.mmm.data
 
+import org.joda.time.Period
+
 ///////////////////////////////////////////////////////////////////////////////
 // Generic stuff
 ///////////////////////////////////////////////////////////////////////////////
@@ -23,7 +25,11 @@ case object AllServerReport extends Message;
 ///////////////////////////////////////////////////////////////////////////////
 sealed trait ServerStatus extends Message;
 
-case class ServerOnline(port: Int, players: Seq[String]) extends ServerStatus;
+case class ServerOnline(port: Int,
+                        players: Seq[String],
+                        ctime: Period,
+                        mtime: Period)
+  extends ServerStatus;
 
 case class ServerStopped(port: Int) extends ServerStatus;
 
